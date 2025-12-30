@@ -111,7 +111,23 @@ Rectangle {
             clip: true
             spacing: 4
             
-            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+            ScrollBar.vertical: ScrollBar { 
+                policy: ScrollBar.AsNeeded
+                
+                background: Rectangle {
+                    implicitWidth: 8
+                    color: bgElevated
+                    radius: 4
+                }
+                
+                contentItem: Rectangle {
+                    implicitWidth: 8
+                    radius: 4
+                    color: parent.pressed ? accentPrimary : (parent.hovered ? Qt.lighter(accentPrimary, 1.3) : textTertiary)
+                    
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                }
+            }
             
             delegate: ChapterDelegate {
                 width: listView.width - 10

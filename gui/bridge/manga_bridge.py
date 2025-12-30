@@ -50,7 +50,7 @@ class FetchWorker(QThread):
                 "is_nsfw": manga.is_nsfw,
                 "description": manga.description or "",
                 "latest_chapter": manga.latest_chapter or "",
-                "genres": manga.genres or [],
+                "original_language": manga.original_language or "",
                 "manga_code": manga_code
             }
             

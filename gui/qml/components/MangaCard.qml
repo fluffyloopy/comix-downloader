@@ -24,11 +24,47 @@ Rectangle {
     opacity: manga ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
     
+    // Language code mapping
+    function getLanguageName(code) {
+        var languages = {
+            "zh": "Chinese",
+            "ko": "Korean",
+            "ja": "Japanese",
+            "en": "English",
+            "es": "Spanish",
+            "fr": "French",
+            "pt": "Portuguese",
+            "id": "Indonesian",
+            "th": "Thai",
+            "vi": "Vietnamese"
+        }
+        return languages[code] || code.toUpperCase()
+    }
+    
     ScrollView {
         anchors.fill: parent
         anchors.margins: 16
         clip: true
         contentWidth: availableWidth
+        
+        // Custom styled scrollbar
+        ScrollBar.vertical: ScrollBar {
+            policy: ScrollBar.AsNeeded
+            
+            background: Rectangle {
+                implicitWidth: 8
+                color: bgElevated
+                radius: 4
+            }
+            
+            contentItem: Rectangle {
+                implicitWidth: 8
+                radius: 4
+                color: parent.pressed ? accentPrimary : (parent.hovered ? Qt.lighter(accentPrimary, 1.3) : textTertiary)
+                
+                Behavior on color { ColorAnimation { duration: 150 } }
+            }
+        }
         
         ColumnLayout {
             width: parent.width
@@ -99,6 +135,15 @@ Rectangle {
                 Text { text: "Type"; font.pixelSize: 12; color: textTertiary }
                 Text { text: manga ? manga.manga_type : ""; font.pixelSize: 12; color: textSecondary; Layout.fillWidth: true }
                 
+                // Original Language
+                Text { text: "Language"; font.pixelSize: 12; color: textTertiary; visible: manga && manga.original_language }
+                Text { 
+                    text: manga && manga.original_language ? getLanguageName(manga.original_language) : ""
+                    font.pixelSize: 12
+                    color: accentPrimary
+                    visible: manga && manga.original_language
+                }
+                
                 // Status
                 Text { text: "Status"; font.pixelSize: 12; color: textTertiary }
                 Text { 
@@ -140,34 +185,6 @@ Rectangle {
                     }
                 }
                 Text { text: manga ? manga.rated_avg.toFixed(1) + "/5" : "0.0"; font.pixelSize: 12; color: textSecondary }
-            }
-            
-            // ─────────────────────────────────────────────────────────────
-            // GENRES
-            // ─────────────────────────────────────────────────────────────
-            Flow {
-                Layout.fillWidth: true
-                spacing: 6
-                visible: manga && manga.genres && manga.genres.length > 0
-                
-                Repeater {
-                    model: manga && manga.genres ? manga.genres.slice(0, 6) : []
-                    Rectangle {
-                        width: genreText.width + 12
-                        height: 22
-                        radius: 11
-                        color: bgElevated
-                        border.color: textTertiary; border.width: 1
-                        
-                        Text {
-                            id: genreText
-                            anchors.centerIn: parent
-                            text: modelData.name || modelData
-                            font.pixelSize: 10
-                            color: textSecondary
-                        }
-                    }
-                }
             }
             
             // ─────────────────────────────────────────────────────────────
