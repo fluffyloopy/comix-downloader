@@ -47,23 +47,12 @@ Rectangle {
         clip: true
         contentWidth: availableWidth
         
-        // Custom styled scrollbar
+        // Hide scrollbar (users can still scroll with mouse wheel)
         ScrollBar.vertical: ScrollBar {
-            policy: ScrollBar.AsNeeded
-            
-            background: Rectangle {
-                implicitWidth: 8
-                color: bgElevated
-                radius: 4
-            }
-            
-            contentItem: Rectangle {
-                implicitWidth: 8
-                radius: 4
-                color: parent.pressed ? accentPrimary : (parent.hovered ? Qt.lighter(accentPrimary, 1.3) : textTertiary)
-                
-                Behavior on color { ColorAnimation { duration: 150 } }
-            }
+            policy: ScrollBar.AlwaysOff
+        }
+        ScrollBar.horizontal: ScrollBar {
+            policy: ScrollBar.AlwaysOff
         }
         
         ColumnLayout {
