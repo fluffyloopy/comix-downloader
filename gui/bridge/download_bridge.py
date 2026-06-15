@@ -104,6 +104,7 @@ class DownloadWorker(QThread):
                 rated_avg=self.manga_dict.get("rated_avg"),
                 follows_total=self.manga_dict.get("follows_total"),
                 is_nsfw=self.manga_dict.get("is_nsfw", False),
+                slug=self.manga_dict.get("slug"),
                 description=self.manga_dict.get("description", "")
             )
             

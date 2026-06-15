@@ -40,7 +40,7 @@ class ComixAPI:
         
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
+                browser = p.chromium.launch(headless=False)
                 context = browser.new_context(
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
                 )
@@ -143,7 +143,7 @@ class ComixAPI:
         
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
+                browser = p.chromium.launch(headless=False)
                 context = browser.new_context(
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
                 )
@@ -232,23 +232,156 @@ class ComixAPI:
         return chapters
     
     @classmethod
-    @retry_with_backoff()
-    def get_chapter_images(cls, chapter_id: int) -> list[str]:
-        """Fetch all image URLs for a chapter."""
-        base_path = f"/chapters/{chapter_id}/"
-        time_val = 1
+    def get_chapter_images(cls, chapter_id: int, manga_slug: str = None, chapter_number: str = None) -> list[str]:
+        """Fetch all image URLs / data URLs for a chapter using Playwright."""
+        if not manga_slug or not chapter_number:
+            manga_slug = "manga"
+            chapter_number = "1"
+            
+        chapter_url = f"https://comix.to/title/{manga_slug}/{chapter_id}-chapter-{chapter_number}"
+        logger.info(f"Fetching chapter images via Playwright DOM for {chapter_url}...")
         
-        request_hash = generate_comix_hash(base_path, time=time_val)
-        url = f"{cls.BASE_URL}{base_path}?time={time_val}&_={request_hash}"
+        image_urls = []
         
-        logger.debug(f"Fetching images for chapter {chapter_id} (hash used)")
-        
-        response = get_session().get(url, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        
-        images = (data.get("result") or {}).get("images", [])
-        image_urls = [img["url"] for img in images if "url" in img]
-        
-        logger.debug(f"Found {len(image_urls)} images")
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=False)
+                context = browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+                )
+                page = context.new_page()
+                
+                # Preload all the images
+                try:
+                    page.goto("https://comix.to/", wait_until="domcontentloaded", timeout=15000)
+                    page.evaluate("""() => {
+                        try {
+                            const k = 'reader.default';
+                            const cur = JSON.parse(localStorage.getItem(k) || '{}');
+                            cur.preload = 'all';
+                            localStorage.setItem(k, JSON.stringify(cur));
+                        } catch (e) {}
+                    }""")
+                except Exception as e:
+                    logger.warning(f"Failed to set preload settings: {e}")
+                
+                # Navigate to the chapter page
+                page.goto(chapter_url, wait_until="domcontentloaded", timeout=30000)
+                
+                # Wait for reader page elements to load
+                page_count = 0
+                for _ in range(60):
+                    try:
+                        page_count = page.evaluate("() => document.querySelectorAll('.rpage-page').length") or 0
+                    except Exception:
+                        page_count = 0
+                    if page_count > 0:
+                        break
+                    page.wait_for_timeout(500)
+                    
+                if page_count == 0:
+                    logger.error(f"Chapter page had no pages in DOM: {chapter_url}")
+                    browser.close()
+                    return []
+                    
+                # Wait for the first page to begin rendering to avoid cold-start timeouts
+                try:
+                    page.wait_for_selector('.rpage-page[data-page="1"] canvas, .rpage-page[data-page="1"] img', timeout=15000)
+                except Exception:
+                    pass
+                    
+                logger.info(f"Chapter has {page_count} pages. Extracting content...")
+                
+                # Iterate and capture each page
+                for page_num in range(1, page_count + 1):
+                    # Scroll page element into view to trigger render/decryption
+                    try:
+                        page.evaluate(
+                            "(n) => { const el = document.querySelector('.rpage-page[data-page=\"' + n + '\"]'); if (el) el.scrollIntoView({behavior: 'instant', block: 'center'}); }",
+                            page_num
+                        )
+                    except Exception:
+                        pass
+                        
+                    # Wait for image element or canvas element to be ready
+                    ready = None
+                    for _attempt in range(40):
+                        try:
+                            ready = page.evaluate(
+                                """(n) => {
+                                    const el = document.querySelector('.rpage-page[data-page="' + n + '"]');
+                                    if (!el) return null;
+                                    const isLoading = el.classList.contains('is-loading');
+                                    const c = el.querySelector('canvas');
+                                    if (c && c.width > 0 && c.height > 0 && !isLoading) {
+                                        return {type: 'canvas'};
+                                    }
+                                    const i = el.querySelector('img');
+                                    if (i && i.src && i.complete && i.naturalWidth > 0) {
+                                        return {type: 'img', src: i.src};
+                                    }
+                                    return null;
+                                }""",
+                                page_num
+                            )
+                        except Exception:
+                            ready = None
+                        if ready:
+                            break
+                        page.wait_for_timeout(250)
+                        
+                    if not ready:
+                        logger.error(f"Page {page_num} timed out waiting for render.")
+                        continue
+                        
+                    # Extract the image data or URL from canvas/image (handling blobs via canvas)
+                    try:
+                        extracted_url = page.evaluate(
+                            """(n) => {
+                                try {
+                                    const el = document.querySelector('.rpage-page[data-page="' + n + '"]');
+                                    if (!el) return null;
+                                    
+                                    const c = el.querySelector('canvas');
+                                    if (c && c.width > 0 && c.height > 0) {
+                                        return c.toDataURL('image/webp', 0.95);
+                                    }
+                                    
+                                    const i = el.querySelector('img');
+                                    if (i && i.src) {
+                                        if (i.src.startsWith('blob:')) {
+                                            try {
+                                                const canvas = document.createElement('canvas');
+                                                canvas.width = i.naturalWidth || i.width;
+                                                canvas.height = i.naturalHeight || i.height;
+                                                const ctx = canvas.getContext('2d');
+                                                ctx.drawImage(i, 0, 0);
+                                                return canvas.toDataURL('image/webp', 0.95);
+                                            } catch (e) {
+                                                return null;
+                                            }
+                                        }
+                                        return i.src;
+                                    }
+                                    return null;
+                                } catch (e) {
+                                    return null;
+                                }
+                            }""",
+                            page_num
+                        )
+                    except Exception as e:
+                        logger.error(f"Page {page_num} extraction failed: {e}")
+                        continue
+                        
+                    if extracted_url:
+                        image_urls.append(extracted_url)
+                    else:
+                        logger.error(f"Page {page_num} failed to extract valid URL or data.")
+                        
+                browser.close()
+        except Exception as e:
+            logger.error(f"Playwright failed to fetch images for chapter {chapter_id}: {e}")
+            
+        logger.info(f"Retrieved {len(image_urls)} / {page_count} page images.")
         return image_urls

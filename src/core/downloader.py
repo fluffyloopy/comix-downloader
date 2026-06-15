@@ -48,6 +48,15 @@ class ImageDownloader:
         Returns:
             Tuple of (index, image_bytes, error_message)
         """
+        if url.startswith("data:image/"):
+            try:
+                import base64
+                header, b64_data = url.split(",", 1)
+                img_bytes = base64.b64decode(b64_data)
+                return index, img_bytes, None
+            except Exception as e:
+                return index, None, f"Failed to decode data URL: {e}"
+
         def _download():
             if is_cancelled():
                 raise InterruptedError("Download cancelled")
@@ -56,7 +65,7 @@ class ImageDownloader:
             response = get_session().get(url, timeout=30, stream=True)
             response.raise_for_status()
             
-            # Use chunks like test.py for better speed and lower memory usage
+            # Use chunks for better speed and lower memory usage
             content = bytearray()
             for chunk in response.iter_content(chunk_size=8192):
                 if is_cancelled():
@@ -151,7 +160,11 @@ class ChapterDownloader:
         try:
             # Fetch image URLs
             from ..api.comix import ComixAPI
-            image_urls = ComixAPI.get_chapter_images(chapter.chapter_id)
+            image_urls = ComixAPI.get_chapter_images(
+                chapter.chapter_id,
+                manga_slug=self.manga.slug or self.manga.hash_id,
+                chapter_number=chapter.number
+            )
             
             if not image_urls:
                 return False, f"No images found for {chapter.get_display_name()}"
