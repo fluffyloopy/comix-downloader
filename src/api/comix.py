@@ -161,6 +161,25 @@ class ComixAPI:
             elif isinstance(g, str):
                 genres.append(g)
 
+        def _extract_people(*keys: str) -> list[str]:
+            names = []
+            for key in keys:
+                raw = manga_detail.get(key)
+                if not raw:
+                    continue
+                if not isinstance(raw, list):
+                    raw = [raw]
+                for entry in raw:
+                    if isinstance(entry, dict):
+                        name = entry.get("title") or entry.get("name")
+                        if name:
+                            names.append(str(name))
+                    elif isinstance(entry, str):
+                        names.append(entry)
+            return names
+        authors = _extract_people("authors", "author")
+        artists = _extract_people("artists", "artist")
+
         return MangaInfo(
             manga_id=manga_detail.get("id"),
             hash_id=manga_detail.get("hid"),
@@ -182,6 +201,8 @@ class ComixAPI:
             is_nsfw=manga_detail.get("contentRating") == "nsfw",
             year=manga_detail.get("year"),
             genres=genres,
+            authors=authors,
+            artists=artists,
             description=manga_detail.get("synopsis", "")
         )
     

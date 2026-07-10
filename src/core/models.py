@@ -5,6 +5,7 @@ Data models for manga, chapters, and configuration.
 from dataclasses import dataclass, field
 from typing import Optional
 from enum import Enum
+import platform
 
 
 class OutputFormat(str, Enum):
@@ -13,6 +14,37 @@ class OutputFormat(str, Enum):
     PDF = "pdf"
     CBZ = "cbz"
 
+_WINDOWS_RESERVED = {"CON", "PRN", "AUX", "NUL",
+                     *(f"COM{i}" for i in range(1, 10)),
+                     *(f"LPT{i}" for i in range(1, 10))}
+
+
+_MAX_NAME_BYTES = 250 if platform.system() == "Linux" else 100
+
+
+def sanitize_for_path(name: str, max_bytes: int | None = None) -> str:
+    limit = _MAX_NAME_BYTES if max_bytes is None else min(max_bytes, _MAX_NAME_BYTES)
+    replacements = {
+        ":": " -",
+        "/": "-",
+        "\\": "-",
+        "|": "-",
+        '"': "'",
+        "*": "", "?": "", "<": "", ">": "",
+    }
+    cleaned = "".join(replacements.get(c, c) for c in name if c.isprintable())
+    cleaned = " ".join(cleaned.split())
+
+    if len(cleaned.encode("utf-8")) > limit:
+        cleaned = cleaned.encode("utf-8")[:limit].decode("utf-8", errors="ignore")
+        if " " in cleaned[len(cleaned) // 2:]:
+            cleaned = cleaned.rsplit(" ", 1)[0]
+
+    cleaned = cleaned.rstrip(" .")
+
+    if cleaned.upper().split(".")[0] in _WINDOWS_RESERVED:
+        cleaned = f"_{cleaned}"
+    return cleaned or "Untitled"
 
 @dataclass
 class MangaInfo:
@@ -37,12 +69,13 @@ class MangaInfo:
     is_nsfw: bool = False
     year: Optional[int] = None
     genres: list = field(default_factory=list)
+    authors: list[str] = field(default_factory=list)
+    artists: list[str] = field(default_factory=list)
     description: str = ""
     
     def get_safe_title(self) -> str:
         """Get filesystem-safe title."""
-        safe = "".join(c if c.isalnum() or c in " -_" else "_" for c in self.title)
-        return safe.strip()[:100]
+        return sanitize_for_path(self.title)
 
 
 @dataclass
@@ -66,11 +99,9 @@ class Chapter:
     def get_safe_folder_name(self) -> str:
         """Get filesystem-safe folder name."""
         name = f"Chapter_{self.number}"
-        if self.title:
-            safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in self.title)
-            name += f"_{safe_title[:50]}"
-        return name
-
+        if self.title and self.title.strip().lower() != f"chapter {self.number}".lower():
+            name += f" - {sanitize_for_path(self.title)}"
+        return sanitize_for_path(name)
 
 @dataclass
 class DownloadConfig:
@@ -84,3 +115,6 @@ class DownloadConfig:
     retry_count: int = 3
     retry_delay: float = 2.0
     headless: bool = True
+    headless: bool = True
+    write_metadata: bool = False
+    manga_rtl: bool = True

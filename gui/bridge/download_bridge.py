@@ -105,7 +105,12 @@ class DownloadWorker(QThread):
                 follows_total=self.manga_dict.get("follows_total"),
                 is_nsfw=self.manga_dict.get("is_nsfw", False),
                 slug=self.manga_dict.get("slug"),
-                description=self.manga_dict.get("description", "")
+                description=self.manga_dict.get("description", ""),
+                genres=self.manga_dict.get("genres", []) or [],
+                authors=self.manga_dict.get("authors", []) or [],
+                artists=self.manga_dict.get("artists", []) or [],
+                original_language=self.manga_dict.get("original_language") or None,
+                final_chapter=self.manga_dict.get("final_chapter") or None
             )
             
             total = len(self.chapters)

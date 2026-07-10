@@ -62,10 +62,17 @@ def create_comic_info_xml(
     # Year
     if manga.year:
         SubElement(root, "Year").text = str(manga.year)
+
+    # Authors and Artists
+    if manga.authors:
+        SubElement(root, "Writer").text = ", ".join(manga.authors)
+    if manga.artists:
+        SubElement(root, "Penciller").text = ", ".join(manga.artists)
     
     # Publisher/Team
     if chapter.group_name:
-        SubElement(root, "Publisher").text = chapter.group_name
+        SubElement(root, "Translator").text = chapter.group_name
+        SubElement(root, "ScanInformation").text = chapter.group_name
     
     # Genre
     if manga.genres:
@@ -79,7 +86,19 @@ def create_comic_info_xml(
         SubElement(root, "LanguageISO").text = manga.original_language
     
     # Manga type
-    SubElement(root, "Manga").text = "Yes" if manga.manga_type in ("manga", "manhwa", "manhua") else "Unknown"
+    if manga.manga_type == "manga" and rtl:
+        SubElement(root, "Manga").text = "YesAndRightToLeft"
+    elif manga.manga_type in ("manga", "manhwa", "manhua"):
+        SubElement(root, "Manga").text = "Yes"
+    else:
+        SubElement(root, "Manga").text = "Unknown"
+
+    # Final chapter
+    try:
+        if manga.final_chapter and float(manga.final_chapter) > 0:
+            SubElement(root, "Count").text = str(int(float(manga.final_chapter)))
+    except (ValueError, TypeError):
+        pass
     
     # Rating
     if manga.rated_avg:
@@ -137,7 +156,7 @@ def create_cbz(
         
         # Add ComicInfo.xml if manga info available
         if manga and chapter:
-            comic_info = create_comic_info_xml(manga, chapter, len(image_paths))
+            comic_info = create_comic_info_xml(manga, chapter, len(image_paths), rtl=rtl)
             cbz.writestr("ComicInfo.xml", comic_info)
             logger.debug("Added ComicInfo.xml")
     
@@ -179,7 +198,7 @@ def create_cbz_from_bytes(
         
         # Add ComicInfo.xml if manga info available
         if manga and chapter:
-            comic_info = create_comic_info_xml(manga, chapter, len(image_data))
+            comic_info = create_comic_info_xml(manga, chapter, len(image_data), rtl=rtl)
             cbz.writestr("ComicInfo.xml", comic_info)
     
     logger.info(f"Created CBZ: {output_path}")

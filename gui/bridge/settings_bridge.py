@@ -104,3 +104,21 @@ class SettingsBridge(QObject):
         """Get absolute path to downloads folder."""
         path = Path(self._config_manager.get("download_path", "downloads"))
         return str(path.absolute())
+
+    @pyqtProperty(bool, notify=settingsChanged)
+    def writeMetadata(self):
+        return self._config_manager.get("write_metadata", False)
+
+    @writeMetadata.setter
+    def writeMetadata(self, value: bool):
+        self._config_manager.set("write_metadata", value)
+        self.settingsChanged.emit()
+
+    @pyqtProperty(bool, notify=settingsChanged)
+    def mangaRtl(self):
+        return self._config_manager.get("manga_rtl", True)
+
+    @mangaRtl.setter
+    def mangaRtl(self, value: bool):
+        self._config_manager.set("manga_rtl", value)
+        self.settingsChanged.emit()

@@ -24,7 +24,9 @@ class ConfigManager:
         "retry_count": 3,
         "retry_delay": 2.0,
         "chapters_display_limit": 20,  # 0 = show all
-        "headless": True
+        "headless": True,
+        "write_metadata": False,
+        "manga_rtl": True
     }
     
     def __init__(self, config_path: str | Path = "config.json"):
@@ -75,7 +77,9 @@ class ConfigManager:
             download_path=self.get("download_path", "downloads"),
             retry_count=self.get("retry_count", 3),
             retry_delay=self.get("retry_delay", 2.0),
-            headless=self.get("headless", True)
+            headless=self.get("headless", True),
+            write_metadata=self.get("write_metadata", False),
+            manga_rtl=self.get("manga_rtl", True)
         )
     
     def update_from_download_config(self, config: DownloadConfig) -> None:
@@ -89,7 +93,9 @@ class ConfigManager:
             "download_path": config.download_path,
             "retry_count": config.retry_count,
             "retry_delay": config.retry_delay,
-            "headless": config.headless
+            "headless": config.headless,
+            "write_metadata": config.write_metadata,
+            "manga_rtl": config.manga_rtl
         })
         self.save()
     

@@ -113,6 +113,24 @@ Rectangle {
                         onToggled: if (SettingsBridge) SettingsBridge.setValue("keep_images", checked)
                     }
                 }
+
+                // Write Komga Metadata
+                SettingItem {
+                    label: "Write Komga Metadata (series.json + cover)"
+                    ToggleSwitch {
+                        checked: SettingsBridge ? SettingsBridge.writeMetadata : false
+                        onToggled: if (SettingsBridge) SettingsBridge.setValue("write_metadata", checked)
+                    }
+                }
+
+                // RTL Reading Direction for Manga
+                SettingItem {
+                    label: "Tag Manga as Right-to-Left"
+                    ToggleSwitch {
+                        checked: SettingsBridge ? SettingsBridge.mangaRtl : true
+                        onToggled: if (SettingsBridge) SettingsBridge.setValue("manga_rtl", checked)
+                    }
+                }
                 
                 // Enable Logs
                 SettingItem {

@@ -204,12 +204,16 @@ class ChapterDownloader:
                 if self.config.keep_images:
                     image_paths = save_images(image_data, base_path, chapter_folder)
                     cbz_path = base_path / f"{chapter_folder}.cbz"
-                    create_cbz(image_paths, cbz_path, self.manga, chapter)
+                    create_cbz(image_paths, cbz_path, self.manga, chapter, rtl=self.config.manga_rtl)
                 else:
                     from ..formats.cbz import create_cbz_from_bytes
                     cbz_path = base_path / f"{chapter_folder}.cbz"
-                    create_cbz_from_bytes(image_data, cbz_path, self.manga, chapter)
+                    create_cbz_from_bytes(image_data, cbz_path, self.manga, chapter, rtl=self.config.manga_rtl)
             
+            if self.config.write_metadata:
+                from ..formats.komga import KomgaMetadataWriter
+                KomgaMetadataWriter(self.manga, base_path).write()
+
             if progress and task_id:
                 progress.update(task_id, completed=len(image_urls))
             

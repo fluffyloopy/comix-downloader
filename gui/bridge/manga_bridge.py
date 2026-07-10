@@ -51,6 +51,10 @@ class FetchWorker(QThread):
                 "description": manga.description or "",
                 "latest_chapter": manga.latest_chapter or "",
                 "original_language": manga.original_language or "",
+                "final_chapter": manga.final_chapter or "",
+                "genres": manga.genres or [],
+                "authors": manga.authors or [],
+                "artists": manga.artists or [],
                 "slug": manga.slug or "",
                 "manga_code": manga_code
             }
