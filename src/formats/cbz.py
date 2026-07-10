@@ -17,7 +17,8 @@ logger = get_logger(__name__)
 def create_comic_info_xml(
     manga: MangaInfo,
     chapter: Chapter,
-    page_count: int
+    page_count: int,
+    rtl: bool = True
 ) -> str:
     """
     Create ComicInfo.xml content for CBZ metadata.
@@ -127,7 +128,8 @@ def create_cbz(
     image_paths: list[Path],
     output_path: str | Path,
     manga: Optional[MangaInfo] = None,
-    chapter: Optional[Chapter] = None
+    chapter: Optional[Chapter] = None,
+    rtl: bool = True
 ) -> Path:
     """
     Create a CBZ archive from image files.
@@ -168,7 +170,8 @@ def create_cbz_from_bytes(
     image_data: list[tuple[int, bytes]],
     output_path: str | Path,
     manga: Optional[MangaInfo] = None,
-    chapter: Optional[Chapter] = None
+    chapter: Optional[Chapter] = None,
+    rtl: bool = True
 ) -> Path:
     """
     Create a CBZ archive directly from image bytes.
