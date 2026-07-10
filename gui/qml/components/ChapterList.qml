@@ -147,6 +147,7 @@ Rectangle {
                             break
                         }
                     }
+                    root.allChaptersChanged()
                 }
                 
                 // Reference the parent ChapterList
@@ -176,11 +177,12 @@ Rectangle {
                 MouseArea { id: allArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         for (var i = 0; i < chapterModel.count; i++) {
-                            chapterModel.setProperty(i, "selected", true)
+                            chapterModel.setProperty(i, "selected", false)
                         }
                         for (var j = 0; j < allChapters.length; j++) {
-                            allChapters[j].selected = true
+                            allChapters[j].selected = false
                         }
+                        root.allChaptersChanged()
                     }
                 }
             }
@@ -194,11 +196,14 @@ Rectangle {
                 MouseArea { id: noneArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         for (var i = 0; i < chapterModel.count; i++) {
-                            chapterModel.setProperty(i, "selected", false)
+                            chapterModel.setProperty(i, "selected", true)
                         }
                         for (var j = 0; j < allChapters.length; j++) {
-                            allChapters[j].selected = false
+                            if (currentFilter === "Any" || allChapters[j].group_name === currentFilter) {
+                                allChapters[j].selected = true
+                            }
                         }
+                        root.allChaptersChanged()
                     }
                 }
             }
